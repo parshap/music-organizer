@@ -24,16 +24,18 @@ es.readArray(FILES)
 	.pipe(recordingStream)
 	.pipe(releaseGroupStream)
 	.pipe(releaseStream)
-	.pipe(es.through(function(release) {
-		var str = getArtistsString(release.artists) +
-			" / " +
-			release.title;
-		if (release.country) {
-			str += " [" + release.country + "]";
-		}
-		str += " (" + release.track_count + " tracks)";
-		console.log(str);
-	}));
+	.pipe(es.through(logRelease));
+
+function logRelease(release) {
+	var str = getArtistsString(release.artists) +
+		" / " +
+		release.title;
+	if (release.country) {
+		str += " [" + release.country + "]";
+	}
+	str += " (" + release.track_count + " tracks)";
+	console.log(str);
+}
 
 function getArtistsString(artists) {
 	return artists.map(function(artist) {
