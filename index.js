@@ -16,12 +16,12 @@ var es = require("event-stream"),
 var trackStream = createTrackStream();
 
 var recordingStream = es.pipeline(
-	createRecordingStream(),
+	createArrayPropertyStream("recordings"),
 	unique("id")
 );
 
 var releaseStream = es.pipeline(
-	createReleasesStream(),
+	createArrayPropertyStream("releases"),
 	unique("id")
 );
 
@@ -29,19 +29,30 @@ es.readArray(FILES)
 	.pipe(trackStream)
 	.pipe(recordingStream)
 	.pipe(releaseStream)
-	.pipe(es.log());
+	.pipe(es.through(function(release) {
+		var str = getArtistsString(release.artists) +
+			" / " +
+			release.title;
+		if (release.country) {
+			str += " [" + release.country + "]";
+		}
+		str += " (" + release.track_count + " tracks)";
+		console.log(str);
+	}));
 
-function createReleasesStream() {
-	return es.through(function(recording) {
-		var emit = this.emit.bind(this, "data");
-		recording.releases.forEach(emit);
-	});
+function getArtistsString(artists) {
+	return artists.map(function(artist) {
+		return artist.name;
+	}).join("; ");
 }
 
-function createRecordingStream() {
-	return es.through(function(track) {
-		var emit = this.emit.bind(this, "data");
-		track.recordings.forEach(emit);
+function createArrayPropertyStream(propName) {
+	return es.through(function(data) {
+		var arr = data[propName];
+		var emit = function(data) {
+			this.emit("data", data);
+		}.bind(this);
+		if (arr) arr.forEach(emit);
 	});
 }
 
