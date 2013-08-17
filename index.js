@@ -15,19 +15,14 @@ var es = require("event-stream"),
 
 var trackStream = createTrackStream();
 
-var recordingStream = es.pipeline(
-	createArrayPropertyStream("recordings"),
-	unique("id")
-);
-
-var releaseStream = es.pipeline(
-	createArrayPropertyStream("releases"),
-	unique("id")
-);
+var recordingStream = createPropertyStream("recordings"),
+	releaseGroupStream = createPropertyStream("releasegroups"),
+	releaseStream = createPropertyStream("releases");
 
 es.readArray(FILES)
 	.pipe(trackStream)
 	.pipe(recordingStream)
+	.pipe(releaseGroupStream)
 	.pipe(releaseStream)
 	.pipe(es.through(function(release) {
 		var str = getArtistsString(release.artists) +
@@ -44,6 +39,13 @@ function getArtistsString(artists) {
 	return artists.map(function(artist) {
 		return artist.name;
 	}).join("; ");
+}
+
+function createPropertyStream(propName) {
+	return es.pipeline(
+		createArrayPropertyStream(propName),
+		unique("id")
+	);
 }
 
 function createArrayPropertyStream(propName) {
@@ -76,5 +78,8 @@ function getTrackData(file, callback) {
 }
 
 function getAcoustID(file, callback) {
-	acoustid(file, { key: "8XaBELgH" }, callback);
+	acoustid(file, {
+		key: "8XaBELgH",
+		meta: "recordings releasegroups releases tracks",
+	}, callback);
 }
