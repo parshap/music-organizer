@@ -13,18 +13,16 @@ var es = require("event-stream"),
 	taglib = require("taglib"),
 	acoustid = require("acoustid");
 
-var trackStream = createTrackStream();
-
-var recordingStream = createPropertyStream("recordings"),
-	releaseGroupStream = createPropertyStream("releasegroups"),
-	releaseStream = createPropertyStream("releases");
+var trackStream = createTrackStream(),
+	releaseRepo = createReleaseRepository();
 
 es.readArray(FILES)
 	.pipe(trackStream)
-	.pipe(recordingStream)
-	.pipe(releaseGroupStream)
-	.pipe(releaseStream)
-	.pipe(es.through(logRelease));
+	.pipe(releaseRepo)
+	.pipe(es.through(null, function() {
+		releaseRepo.createReadStream()
+			.pipe(es.through(logRelease));
+	}));
 
 function logRelease(release) {
 	var str = getArtistsString(release.artists) +
@@ -33,31 +31,105 @@ function logRelease(release) {
 	if (release.country) {
 		str += " [" + release.country + "]";
 	}
-	str += " (" + release.track_count + " tracks)";
+	str += " (" + release.tracks.length + " of " +
+		release.trackCount + " tracks)";
 	console.log(str);
+}
+
+function createReleaseRepository() {
+	var repo = es.through(function(file) {
+		file.recordings.forEach(function(recording) {
+			parseRecording(recording, file);
+		});
+	});
+
+	repo.get = function(id) {
+		return repo.data[id];
+	};
+
+	repo.add = function(data) {
+		repo.data[data.id] = data;
+		repo.emit("data", data);
+	};
+
+	repo.createReadStream = function() {
+		return es.readArray(repo.toArray());
+	};
+
+	repo.toArray = function() {
+		return Object.keys(repo.data).map(function(id) {
+			return repo.data[id];
+		});
+	};
+
+	function parseRecording(recording, file) {
+		recording.releasegroups.forEach(function(releasegroup) {
+			parseGroup(releasegroup, recording, file);
+		});
+	}
+
+	function parseGroup(group, recording, file) {
+		group.releases.forEach(function(release) {
+			parseRelease(release, group, recording, file);
+		});
+	}
+
+	function parseRelease(release, group, recording, file) {
+		// Get existing release or create new one
+		var rel = repo.get(release.id);
+		if ( ! rel) {
+			rel = createRelease(release, group, recording, file);
+			repo.add(rel);
+		}
+
+		release.mediums.forEach(function(medium) {
+			parseMedium(medium, rel, group, recording, file);
+		});
+	}
+
+	function parseMedium(medium, rel, group, recording, file) {
+		medium.tracks.forEach(function(track) {
+			parseTrack(track, medium, rel, group, recording, file);
+		});
+	}
+
+	function parseTrack(track, medium, rel, group, recording, file) {
+		rel.tracks.push({
+			id: track.id,
+			recordingId: recording.id,
+			duration: recording.duration,
+			artists: recording.artists,
+			title: recording.title,
+			format: medium.format,
+			position: track.position,
+			discTrackCount: medium.track_count,
+			discPosition: medium.position,
+			// @TODO Recording & File path
+		});
+	}
+
+	function createRelease(release, group, recording, file) {
+		return {
+			id: release.id,
+			title: group.title,
+			type: group.type,
+			secondaryTypes: group.secondarytypes,
+			artists: group.artists,
+			trackCount: release.track_count,
+			discCount: release.medium_count,
+			country: release.country,
+			tracks: [],
+		};
+	}
+
+	repo.data = {};
+	return repo;
 }
 
 function getArtistsString(artists) {
 	return artists.map(function(artist) {
 		return artist.name;
 	}).join("; ");
-}
-
-function createPropertyStream(propName) {
-	return es.pipeline(
-		createArrayPropertyStream(propName),
-		unique("id")
-	);
-}
-
-function createArrayPropertyStream(propName) {
-	return es.through(function(data) {
-		var arr = data[propName];
-		var emit = function(data) {
-			this.emit("data", data);
-		}.bind(this);
-		if (arr) arr.forEach(emit);
-	});
 }
 
 // Map file paths to Track objects
