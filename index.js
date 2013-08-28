@@ -1,18 +1,14 @@
 // jshint node:true
 "use strict";
 
-var FILES = [
-	"test-album/01 999,999.mp3",
-	"test-album/02 1,000,000.mp3",
-	"test-album/03 Letting You.mp3",
-];
-
 var es = require("event-stream");
+
+var files = process.argv.slice(2);
 
 var trackStream = createTrackStream(),
 	releaseRepo = createReleaseRepository();
 
-es.readArray(FILES)
+es.readArray(files)
 	.pipe(trackStream)
 	.pipe(releaseRepo);
 
@@ -28,9 +24,10 @@ releaseRepo.on("end", function() {
 
 function selectRelease(releases, callback) {
 	releases = releases.sort(function(a, b) {
-		return a.tracks.length - b.tracks.length;
-	}).reverse();
-	console.log(releases.length, "Releases Found:");
+		// Reverse by number of tracks
+		return b.tracks.length - a.tracks.length;
+	});
+	console.log(releases.length + " Releases Found:");
 	recursivePromptList("Select a release: ", releases, callback);
 }
 
@@ -87,7 +84,6 @@ function writeTags(release, callback) {
 	async.forEach(release.tracks, function(track, callback) {
 		var artist = getArtistString(track.artists),
 			isSameArtist = artist === albumArtist;
-		console.log("write", track.path);
 		ffmetadata.write(track.path, {
 			album: release.title,
 			artist: artist,
@@ -147,7 +143,10 @@ function getArtistString(artists) {
 
 function createReleaseRepository() {
 	var repo = es.through(function(file) {
-		file.recordings.forEach(function(recording) {
+		file.recordings.sort(function(a, b) {
+			// Reverse by order of number of sources
+			return b.sources - a.sources;
+		}).slice(0, 1).forEach(function(recording) {
 			parseRecording(recording, file);
 		});
 	});
@@ -270,6 +269,6 @@ function getTrackData(file, callback) {
 function getAcoustID(file, callback) {
 	acoustid(file, {
 		key: "8XaBELgH",
-		meta: "recordings releasegroups releases tracks",
+		meta: "recordings releasegroups releases tracks sources",
 	}, callback);
 }
