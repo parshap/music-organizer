@@ -81,7 +81,7 @@ function updateRelease(release, callback) {
 
 function writeTags(release, callback) {
 	var albumArtist = getArtistString(release.artists);
-	async.forEach(release.tracks, function(track, callback) {
+	async.eachLimit(release.tracks, 2, function(track, callback) {
 		var artist = getArtistString(track.artists),
 			isSameArtist = artist === albumArtist;
 		ffmetadata.write(track.path, {
