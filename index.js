@@ -91,7 +91,9 @@ function writeTags(release, callback) {
 			title: track.title,
 		};
 
-		if (release.date && release.date.year) {
+		if (release.date) {
+			data.date = new Date(release.date.year,
+				release.date.month, release.date.day).toISOString();
 			data.year = String(release.date.year);
 		}
 
