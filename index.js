@@ -82,16 +82,23 @@ function updateRelease(release, callback) {
 function writeTags(release, callback) {
 	var albumArtist = getArtistString(release.artists);
 	async.eachLimit(release.tracks, 2, function(track, callback) {
-		var artist = getArtistString(track.artists),
-			isSameArtist = artist === albumArtist;
-		ffmetadata.write(track.path, {
+		var data = {
 			album: release.title,
-			artist: artist,
-			album_artist: isSameArtist ? null : albumArtist,
+			artist: getArtistString(track.artists),
+			album_artist: albumArtist,
 			track: track.position + "/" + track.discTrackCount,
-			disc: track.discPosition + "/" + release.discCount,
 			title: track.title,
-		}, callback);
+		};
+
+		if (release.date && release.date.year) {
+			data.year = String(release.date.year);
+		}
+
+		if (release.discCount > 1) {
+			data.disc = track.discPosition + "/" + release.discCount;
+		}
+
+		ffmetadata.write(track.path, data, callback);
 	}, callback);
 }
 
@@ -130,15 +137,36 @@ function getReleaseString(release) {
 	if (release.country) {
 		str += " [" + release.country + "]";
 	}
+	if (release.mediums) {
+		str += " [" + release.discCount + "x " +
+			getMediumFormatString(release.mediums) + "]";
+	}
 	str += " (" + release.tracks.length + " of " +
 		release.trackCount + " tracks)";
 	return str;
 }
 
+function getMediumFormatString(mediums) {
+	var formats = [];
+	mediums.forEach(function(medium) {
+		var format = medium.format;
+		if (formats.indexOf(format) === -1) {
+			formats.push(format);
+		}
+	});
+	return formats.join("; ");
+}
+
 function getArtistString(artists) {
-	return artists.map(function(artist) {
-		return artist.name;
-	}).join("; ");
+	var joinphrase, str = "";
+	artists.forEach(function(artist) {
+		if (joinphrase) {
+			str += joinphrase;
+		}
+		str += artist.name;
+		joinphrase = artist.joinphrase || "; ";
+	});
+	return str;
 }
 
 function createReleaseRepository() {
@@ -228,6 +256,7 @@ function createReleaseRepository() {
 			artists: group.artists,
 			trackCount: release.track_count,
 			discCount: release.medium_count,
+			mediums: release.mediums,
 			country: release.country,
 			tracks: [],
 		};
