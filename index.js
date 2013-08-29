@@ -1,26 +1,27 @@
 // jshint node:true
 "use strict";
 
-var es = require("event-stream");
+var es = require("event-stream"),
+	ffmetadata = require("ffmetadata");
 
-var files = process.argv.slice(2);
+module.exports = function(files) {
+	var trackStream = createTrackStream(),
+		releaseRepo = createReleaseRepository();
 
-var trackStream = createTrackStream(),
-	releaseRepo = createReleaseRepository();
+	es.readArray(files)
+		.pipe(trackStream)
+		.pipe(releaseRepo);
 
-es.readArray(files)
-	.pipe(trackStream)
-	.pipe(releaseRepo);
-
-releaseRepo.on("end", function() {
-	var releases = releaseRepo.toArray();
-	// @TODO Reduce to groups of overlapping releases
-	selectRelease(releases, function(err, release) {
-		updateRelease(release, function(err) {
-			console.log("done", err);
+	releaseRepo.on("end", function() {
+		var releases = releaseRepo.toArray();
+		// @TODO Reduce to groups of overlapping releases
+		selectRelease(releases, function(err, release) {
+			updateRelease(release, function(err) {
+				console.log("done", err);
+			});
 		});
 	});
-});
+};
 
 function selectRelease(releases, callback) {
 	releases = releases.sort(function(a, b) {
@@ -276,7 +277,6 @@ function createTrackStream() {
 }
 
 var async = require("async"),
-	ffmetadata = require("ffmetadata"),
 	acoustid = require("acoustid");
 
 // Get track data from track file path
