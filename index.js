@@ -50,7 +50,12 @@ function isInteger(val) {
 
 var read = require("read");
 function prompt(text, callback) {
-	read({ prompt: text}, callback);
+	read({ prompt: text}, function(err, val) {
+		if (err && err.message === "canceled") {
+			process.exit();
+		}
+		callback(err, val);
+	});
 }
 
 function promptList(text, list, callback) {
