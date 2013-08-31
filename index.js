@@ -4,6 +4,8 @@
 var es = require("event-stream"),
 	ffmetadata = require("ffmetadata");
 
+var debug = console.info;
+
 module.exports = function(files) {
 	var trackStream = createTrackStream(),
 		releaseRepo = createReleaseRepository();
@@ -79,44 +81,79 @@ function consoleList(list) {
 
 // Write metadata and rename files
 function updateRelease(release, callback) {
+	var files = getReleaseFiles(release);
 	async.series([
-		writeTags.bind(null, release),
-		rename.bind(null, release),
+		tagRelease.bind(null, files, release),
+		renameRelease.bind(null, files, release),
 	], callback);
 }
 
-function writeTags(release, callback) {
-	var albumArtist = getArtistString(release.artists);
-	async.eachLimit(release.tracks, 2, function(track, callback) {
-		var data = {
-			album: release.title,
-			artist: getArtistString(track.artists),
-			album_artist: albumArtist,
-			track: track.position + "/" + track.discTrackCount,
-			title: track.title,
-		};
+function tagRelease(files, release, callback) {
+	var queue = files.slice(0);
+	function process(file, callback) {
+		var tracks = file.tracks.filter(isNotWritten);
+		if (tracks.length !== 1) {
+			return callback(new Error("No track choice for file"));
+		}
+		writeFileTags(file, tracks.shift(), release, callback);
+	}
 
-		if (release.date) {
-			data.date = new Date(release.date.year,
-				release.date.month, release.date.day).toISOString();
-			data.year = String(release.date.year);
+	(function step() {
+		if ( ! queue.length) {
+			return callback();
 		}
 
-		if (release.discCount > 1) {
-			data.disc = track.discPosition + "/" + release.discCount;
-		}
+		queue.sort(function(a, b) {
+			return a.tracks.filter(isNotWritten).length -
+				b.tracks.filter(isNotWritten).length;
+		});
 
-		ffmetadata.write(track.path, data, callback);
+		process(queue.shift(), function(err) {
+			if (err) {
+				return callback(err);
+			}
+			step();
+		});
+	})();
+}
+
+function renameRelease(files, release, callback) {
+	async.forEach(files, function(file, callback) {
+		rebasename(file.path, getFileName(file), function(err, newPath) {
+			if (err) return callback(err);
+			file.path = newPath;
+		});
 	}, callback);
 }
 
-function rename(release, callback) {
-	async.forEach(release.tracks, function(track, callback) {
-		rebasename(track.path, getFileName(track), function(err, newPath) {
-			if (err) return callback(err);
-			track.path = newPath;
-		});
-	}, callback);
+function isNotWritten(track) {
+	return ! track.written;
+}
+
+function writeFileTags(file, track, release, callback) {
+	var data = {
+		album: release.title,
+		artist: getArtistString(track.artists),
+		album_artist: getArtistString(release.artists),
+		track: track.position + "/" + track.discTrackCount,
+		title: track.title,
+	};
+
+	if (release.date) {
+		data.date = [release.date.year, release.date.month, release.date.day]
+			.join("-");
+		// iTunes looks for "recording date" instead of release date so we will
+		// spoof this. @TODO MP3-only
+		data.TDRC = data.date;
+	}
+
+	if (release.discCount > 1) {
+		data.disc = track.discPosition + "/" + release.discCount;
+	}
+
+	ffmetadata.write(file.path, data, callback);
+	track.written = true;
+	file.track = track;
 }
 
 var path = require("path"),
@@ -133,9 +170,9 @@ function rebasename(p, basename, callback) {
 }
 
 var pad = require("pad");
-function getFileName(track) {
+function getFileName(file) {
 	// {position}. {title}
-	return pad(2, String(track.position), "0") + ". " + track.title;
+	return pad(2, String(file.track.position), "0") + ". " + file.track.title;
 }
 
 function getReleaseString(release) {
@@ -182,7 +219,7 @@ function createReleaseRepository() {
 		file.recordings.sort(function(a, b) {
 			// Reverse by order of number of sources
 			return b.sources - a.sources;
-		}).slice(0, 1).forEach(function(recording) {
+		}).forEach(function(recording) {
 			parseRecording(recording, file);
 		});
 	});
@@ -233,14 +270,15 @@ function createReleaseRepository() {
 
 	function parseMedium(medium, rel, group, recording, file) {
 		medium.tracks.forEach(function(track) {
-			parseTrack(track, medium, rel, group, recording, file);
+			rel.addTrack(createTrack(track, medium, rel, recording, file));
 		});
 	}
 
-	function parseTrack(track, medium, rel, group, recording, file) {
-		rel.tracks.push({
+	function createTrack(track, medium, release, recording, file) {
+		return {
 			id: track.id,
-			recordingId: recording.id,
+			release: release,
+			recording: recording,
 			duration: recording.duration,
 			artists: recording.artists,
 			title: recording.title,
@@ -248,11 +286,9 @@ function createReleaseRepository() {
 			position: track.position,
 			discTrackCount: medium.track_count,
 			discPosition: medium.position,
-			recording: recording,
 			path: file.file,
 			tags: file.tags,
-			// @TODO Recording & File path
-		});
+		};
 	}
 
 	function createRelease(release, group, recording, file) {
@@ -261,12 +297,24 @@ function createReleaseRepository() {
 			title: group.title,
 			type: group.type,
 			secondaryTypes: group.secondarytypes,
+			date: release.date,
 			artists: group.artists,
 			trackCount: release.track_count,
 			discCount: release.medium_count,
 			mediums: release.mediums,
 			country: release.country,
 			tracks: [],
+		};
+		rel.addTrack = function(aTrack) {
+			if ( ! this.hasTrack(aTrack)) {
+				this.tracks.push(aTrack);
+			}
+		};
+		rel.hasTrack = function(aTrack) {
+			return this.tracks.some(function(track) {
+				return track.id === aTrack.id &&
+					track.path === aTrack.path;
+			});
 		};
 		rel.toString = function() {
 			return getReleaseString(this);
@@ -276,6 +324,19 @@ function createReleaseRepository() {
 
 	repo.data = {};
 	return repo;
+}
+
+function getReleaseFiles(release) {
+	var files = release.tracks.reduce(function(files, track) {
+		(files[track.path] = files[track.path] || []).push(track);
+		return files;
+	}, {});
+	return Object.keys(files).map(function(path) {
+		return {
+			path: path,
+			tracks: files[path] || [],
+		};
+	});
 }
 
 // Map file paths to Track objects
@@ -292,8 +353,13 @@ function getTrackData(file, callback) {
 		"tags": ffmetadata.read.bind(null, file),
 		"acoustid": getAcoustID.bind(null, file),
 	}, function(err, results) {
-		var first = results.acoustid[0],
-			recordings = first ? first.recordings : [];
+		var recordings = results.acoustid.reduce(function(acc, cur) {
+			debug("Track", file, cur.id, cur.recordings ? cur.recordings.length : 0);
+			if (cur.recordings) {
+				acc.push.apply(acc, cur.recordings);
+			}
+			return acc;
+		}, []);
 		callback(err, {
 			file: file,
 			tags: results.tags,
