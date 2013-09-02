@@ -91,13 +91,21 @@ function updateRelease(release, callback) {
 
 function tagRelease(files, release, callback) {
 	var queue = files.slice(0);
+
+	var written = {};
+	function isNotWritten(track) {
+		return ! written.hasOwnProperty(track.id);
+	}
+
 	function process(file, callback) {
 		var tracks = file.tracks.filter(isNotWritten);
 		if (tracks.length !== 1) {
 			// @TODO Do a first pass to ensure all-or-nothing
 			return callback(new Error("No track choice for file"));
 		}
-		writeFileTags(file, tracks.shift(), release, callback);
+		file.track = tracks.shift();
+		written[file.track.id] = true;
+		writeFileTags(file, file.track, release, callback);
 	}
 
 	(function step() {
@@ -131,10 +139,6 @@ function renameDirectory(files, release, callback) {
 	rebasename(dirname, getDirectoryName(release), callback);
 }
 
-function isNotWritten(track) {
-	return ! track.written;
-}
-
 function writeFileTags(file, track, release, callback) {
 	var data = {
 		album: release.title,
@@ -157,8 +161,6 @@ function writeFileTags(file, track, release, callback) {
 	}
 
 	ffmetadata.write(file.path, data, callback);
-	track.written = true;
-	file.track = track;
 }
 
 var path = require("path"),
