@@ -93,6 +93,7 @@ function tagRelease(files, release, callback) {
 	function process(file, callback) {
 		var tracks = file.tracks.filter(isNotWritten);
 		if (tracks.length !== 1) {
+			// @TODO Do a first pass to ensure all-or-nothing
 			return callback(new Error("No track choice for file"));
 		}
 		writeFileTags(file, tracks.shift(), release, callback);
@@ -216,9 +217,12 @@ function getArtistString(artists) {
 
 function createReleaseRepository() {
 	var repo = es.through(function(file) {
-		file.recordings.sort(function(a, b) {
-			// Reverse by order of number of sources
-			return b.sources - a.sources;
+		var sources = file.recordings.reduce(function(acc, cur) {
+			return acc + cur.sources;
+		}, 0);
+		file.recordings.filter(function(recording) {
+			return (recording.sources / sources) > 0.1 ||
+				recording.sources > 10;
 		}).forEach(function(recording) {
 			parseRecording(recording, file);
 		});
@@ -355,7 +359,7 @@ function getTrackData(file, callback) {
 	}, function(err, results) {
 		var recordings = results.acoustid.reduce(function(acc, cur) {
 			debug("Track", file, cur.id, cur.recordings ? cur.recordings.length : 0);
-			if (cur.recordings) {
+			if (cur.score > 0.5 && cur.recordings) {
 				acc.push.apply(acc, cur.recordings);
 			}
 			return acc;
