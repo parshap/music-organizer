@@ -85,6 +85,7 @@ function updateRelease(release, callback) {
 	async.series([
 		tagRelease.bind(null, files, release),
 		renameRelease.bind(null, files, release),
+		renameDirectory.bind(null, files, release),
 	], callback);
 }
 
@@ -120,11 +121,14 @@ function tagRelease(files, release, callback) {
 
 function renameRelease(files, release, callback) {
 	async.forEach(files, function(file, callback) {
-		rebasename(file.path, getFileName(file), function(err, newPath) {
-			if (err) return callback(err);
-			file.path = newPath;
-		});
+		rebasename(file.path, getFileName(file), callback);
 	}, callback);
+}
+
+var path = require("path");
+function renameDirectory(files, release, callback) {
+	var dirname = path.dirname(files[0].path);
+	rebasename(dirname, getDirectoryName(release), callback);
 }
 
 function isNotWritten(track) {
@@ -174,6 +178,15 @@ var pad = require("pad");
 function getFileName(file) {
 	// {position}. {title}
 	return pad(2, String(file.track.position), "0") + ". " + file.track.title;
+}
+
+function getDirectoryName(release) {
+	var str = "";
+	if (release.date) {
+		str += release.date.year + " - ";
+	}
+	str += release.title;
+	return str;
 }
 
 function getReleaseString(release) {
