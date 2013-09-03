@@ -29,6 +29,7 @@
     "event-stream": "~3.0.16",
     "async": "~0.2",
     "pad": "0.0.4",
-    "read": "~1.0.5"
+    "read": "~1.0.5",
+    "sanitize-filename": "~1"
   }
 }

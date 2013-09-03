@@ -176,10 +176,13 @@ function rebasename(p, basename, callback) {
 	});
 }
 
+var sanitize = require("sanitize-filename");
 var pad = require("pad");
 function getFileName(file) {
 	// {position}. {title}
-	return pad(2, String(file.track.position), "0") + ". " + file.track.title;
+	return sanitize(
+		pad(2, String(file.track.position), "0") +
+		". " + file.track.title);
 }
 
 function getDirectoryName(release) {
@@ -188,7 +191,7 @@ function getDirectoryName(release) {
 		str += release.date.year + " - ";
 	}
 	str += release.title;
-	return str;
+	return sanitize(str);
 }
 
 function getReleaseString(release) {
