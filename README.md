@@ -8,6 +8,8 @@
  * update tags based on info, warn when different from existing tags
 
  * File
+	* path
+	* tags
 	* n Track
 	* n Releases
 
@@ -23,6 +25,6 @@ Pick Release
 Get all files 
 Sort files by number of unwritten tracks
 for each file
-	if there is more than one unwritten track give choice
+	select from available tracks
 	write track info
 	mark tracked as used

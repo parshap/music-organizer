@@ -32,5 +32,9 @@
     "read": "~1.0.5",
     "sanitize-filename": "~1",
     "is-integer": "~1"
+  },
+  "devDependencies": {
+    "JSONStream": "~0.7.1",
+    "tape": "~1.1.0"
   }
 }
