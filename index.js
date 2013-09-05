@@ -27,6 +27,12 @@ module.exports = function(files) {
 
 var path = require("path");
 function selectTrack(file, tracks, callback) {
+	if (tracks.length === 1) {
+		return callback(null, tracks[0]);
+	}
+	tracks.sort(function(a, b) {
+		return b.recording.sources - a.recording.sources;
+	});
 	var filename = path.basename(file.path);
 	console.log(tracks.length + " Tracks for " + filename);
 	recursivePromptList("Select a track: ", tracks, callback);
@@ -48,15 +54,6 @@ function recursivePromptList(text, releases, callback) {
 	});
 }
 
-// ES6 isInteger Polyfill https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger#Polyfill
-function isInteger(val) {
-	return typeof val === "number" &&
-		isFinite(val) &&
-		val > -9007199254740992 &&
-		val < 9007199254740992 &&
-		Math.floor(val) === val;
-}
-
 var read = require("read");
 function prompt(text, callback) {
 	read({ prompt: text}, function(err, val) {
@@ -67,6 +64,7 @@ function prompt(text, callback) {
 	});
 }
 
+var isInteger = require("is-integer");
 function promptList(text, list, callback) {
 	consoleList(list);
 	prompt(text, function(err, val) {
@@ -190,7 +188,7 @@ var pad = require("pad");
 function getFileName(file) {
 	// {position}. {title}
 	return sanitize(
-		pad(2, String(file.track.position), "0") +
+		padTrackNumber(file.track.position) +
 		". " + file.track.title);
 }
 
@@ -203,10 +201,16 @@ function getDirectoryName(release) {
 	return sanitize(str);
 }
 
+
 function getTrackString(track) {
-	return track.position + ". " +
+	return padTrackNumber(track.position) + ". " +
 		getArtistString(track.artists) + " / " +
-		track.title;
+		track.title +
+		" (" + track.recording.sources + " sources)";
+}
+
+function padTrackNumber(number) {
+	return pad(2, String(number), "0");
 }
 
 function getReleaseString(release) {
