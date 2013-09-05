@@ -25,6 +25,13 @@ module.exports = function(files) {
 	});
 };
 
+var path = require("path");
+function selectTrack(file, tracks, callback) {
+	var filename = path.basename(file.path);
+	console.log(tracks.length + " Tracks for " + filename);
+	recursivePromptList("Select a track: ", tracks, callback);
+}
+
 function selectRelease(releases, callback) {
 	releases = releases.sort(function(a, b) {
 		// Reverse by number of tracks
@@ -99,13 +106,15 @@ function tagRelease(files, release, callback) {
 
 	function process(file, callback) {
 		var tracks = file.tracks.filter(isNotWritten);
-		if (tracks.length !== 1) {
+		if ( ! tracks.length) {
 			// @TODO Do a first pass to ensure all-or-nothing
 			return callback(new Error("No track choice for file"));
 		}
-		file.track = tracks.shift();
-		written[file.track.id] = true;
-		writeFileTags(file, file.track, release, callback);
+		selectTrack(file, tracks, function(err, track) {
+			file.track = track;
+			written[track.id] = true;
+			writeFileTags(file, track, release, callback);
+		});
 	}
 
 	(function step() {
@@ -192,6 +201,12 @@ function getDirectoryName(release) {
 	}
 	str += release.title;
 	return sanitize(str);
+}
+
+function getTrackString(track) {
+	return track.position + ". " +
+		getArtistString(track.artists) + " / " +
+		track.title;
 }
 
 function getReleaseString(release) {
@@ -297,7 +312,7 @@ function createReleaseRepository() {
 	}
 
 	function createTrack(track, medium, release, recording, file) {
-		return {
+		var t = {
 			id: track.id,
 			release: release,
 			recording: recording,
@@ -311,6 +326,10 @@ function createReleaseRepository() {
 			path: file.file,
 			tags: file.tags,
 		};
+		t.toString = function(track) {
+			return getTrackString(this);
+		};
+		return t;
 	}
 
 	function createRelease(release, group, recording, file) {
