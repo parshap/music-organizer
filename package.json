@@ -6,6 +6,9 @@
   "scripts": {
     "test": "node test.js"
   },
+  "bin": {
+    "ao": "./bin/ao"
+  },
   "repository": {
     "type": "git",
     "url": "git@github.com:parshap/album-organizer.git"
