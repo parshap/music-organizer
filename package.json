@@ -34,7 +34,8 @@
     "pad": "0.0.4",
     "read": "~1.0.5",
     "sanitize-filename": "~1",
-    "is-integer": "~1"
+    "is-integer": "~1",
+    "cli-color": "~0.2.2"
   },
   "devDependencies": {
     "JSONStream": "~0.7.1",

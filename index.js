@@ -8,11 +8,14 @@ var createTrackStream = require("./lib/tracks"),
 	pickTags = require("./lib/tags"),
 	parse = require("./lib/parse"),
 	update = require("./lib/update"),
-	select = require("./lib/select");
+	select = require("./lib/select"),
+	progress = require("./lib/stream-progress");
 
 module.exports = function(paths) {
+	console.log("Reading input");
+
 	es.readArray(paths)
-		.pipe(createTrackStream())
+		.pipe(progress(createTrackStream()))
 		.pipe(parse(function(data) {
 			organize(data);
 		}));
