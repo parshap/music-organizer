@@ -1,6 +1,8 @@
 // jshint node:true
 "use strict";
 
+var PACKAGE = require("./package.json");
+
 var es = require("event-stream"),
 	async = require("async");
 
@@ -9,13 +11,32 @@ var createTrackStream = require("./lib/tracks"),
 	parse = require("./lib/parse"),
 	update = require("./lib/update"),
 	select = require("./lib/select"),
-	progress = require("./lib/stream-progress");
+	progress = require("./lib/stream-progress"),
+	color = require("cli-color");
 
 module.exports = function(paths) {
-	console.log("Reading input");
+	var trackStream = createTrackStream();
+
+	console.log(
+		color.red("album-organizer"),
+		color.redBright("v" + PACKAGE.version),
+		"\n"
+	);
+
+	console.log(
+		"Reading",
+		color.redBright(paths.length + " files")
+	);
+
+	var start = Date.now();
+	progress(trackStream)
+		.on("end", function() {
+			var time = Math.round((Date.now() - start) / 100) / 10;
+			console.log("Read complete in " + time + "s", "\n");
+		});
 
 	es.readArray(paths)
-		.pipe(progress(createTrackStream()))
+		.pipe(trackStream)
 		.pipe(parse(function(data) {
 			organize(data);
 		}));
@@ -27,6 +48,9 @@ function organize(data) {
 		pickTags,
 		update,
 	], function(err) {
-		console.log("done", err);
+		if (err) {
+			return console.error(err);
+		}
+		console.log("Complete");
 	});
 }
