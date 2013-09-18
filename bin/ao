@@ -1,4 +1,4 @@
 #!/usr/bin/env node
 var organize = require("../");
-var files = process.argv.slice(2);
-organize(files);
+var paths = process.argv.slice(2);
+organize(paths[0]);

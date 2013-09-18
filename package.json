@@ -35,7 +35,9 @@
     "read": "~1.0.5",
     "sanitize-filename": "~1",
     "is-integer": "~1",
-    "cli-color": "~0.2.2"
+    "cli-color": "~0.2.2",
+    "findit": "~0.1.2",
+    "stream-reduce": "~1.0.0"
   },
   "devDependencies": {
     "JSONStream": "~0.7.1",
