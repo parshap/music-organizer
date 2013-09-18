@@ -21,26 +21,8 @@ module.exports = function(path) {
 	var fileStream = createFileStream(path),
 		trackStream = createTrackStream();
 
-	console.log(
-		color.red("album-organizer"),
-		color.redBright("v" + PACKAGE.version),
-		"\n"
-	);
-
-	fileStream.pipe(count(function(length) {
-		console.log(
-			"Reading",
-			color.redBright(length + " files")
-		);
-		bar.render();
-	}));
-
-	var start = Date.now();
-	var bar = progress(trackStream);
-	bar.on("end", function() {
-		var time = Math.round((Date.now() - start) / 100) / 10;
-		console.log("Read complete in " + time + "s", "\n");
-	});
+	logIntro();
+	logStart(fileStream, progress(trackStream));
 
 	fileStream
 		.pipe(trackStream)
@@ -48,6 +30,29 @@ module.exports = function(path) {
 			organize(data);
 		}));
 };
+
+function logIntro() {
+	console.log(
+		color.red("album-organizer"),
+		color.redBright("v" + PACKAGE.version),
+		"\n"
+	);
+}
+
+function logStart(fileStream, progressStream) {
+	var start = Date.now();
+	fileStream.pipe(count(function(length) {
+		console.log(
+			"Reading",
+			color.redBright(length + " files")
+		);
+		progressStream.render();
+		progressStream.on("end", function() {
+			var time = Math.round((Date.now() - start) / 100) / 10;
+			console.log("Read complete in " + time + "s", "\n");
+		});
+	}));
+}
 
 function organize(data) {
 	async.waterfall([
