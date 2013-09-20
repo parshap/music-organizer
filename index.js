@@ -5,30 +5,28 @@ var PACKAGE = require("./package.json");
 
 var path = require("path"),
 	es = require("event-stream"),
-	async = require("async"),
 	color = require("cli-color"),
 	reduce = require("stream-reduce"),
 	findit = require("findit");
 
 var createTrackStream = require("./lib/tracks"),
-	pickTags = require("./lib/tags"),
-	parse = require("./lib/parse"),
-	update = require("./lib/update"),
-	select = require("./lib/select"),
+	createParseStream = require("./lib/parse"),
+	createOrganizeStream = require("./lib/organize"),
 	progress = require("./lib/stream-progress");
 
 module.exports = function(path) {
 	var fileStream = createFileStream(path),
-		trackStream = createTrackStream();
+		trackStream = createTrackStream(),
+		parser = createParseStream(),
+		organizer = createOrganizeStream();
 
 	logIntro();
 	logStart(fileStream, progress(trackStream));
 
 	fileStream
 		.pipe(trackStream)
-		.pipe(parse(function(data) {
-			organize(data);
-		}));
+		.pipe(parser)
+		.pipe(organizer);
 };
 
 function logIntro() {
@@ -52,19 +50,6 @@ function logStart(fileStream, progressStream) {
 			console.log("Read complete in " + time + "s", "\n");
 		});
 	}));
-}
-
-function organize(data) {
-	async.waterfall([
-		select.release.bind(null, data.releases),
-		pickTags,
-		update,
-	], function(err) {
-		if (err) {
-			return console.error(err);
-		}
-		console.log("Complete");
-	});
 }
 
 var AUDIO_EXTS = [
