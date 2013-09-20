@@ -3,13 +3,12 @@
 
 var PACKAGE = require("./package.json");
 
-var path = require("path"),
-	es = require("event-stream"),
+var es = require("event-stream"),
 	color = require("cli-color"),
-	reduce = require("stream-reduce"),
-	findit = require("findit");
+	reduce = require("stream-reduce");
 
-var createTrackStream = require("./lib/tracks"),
+var createFileStream = require("./lib/files"),
+	createTrackStream = require("./lib/tracks"),
 	createParseStream = require("./lib/parse"),
 	createOrganizeStream = require("./lib/organize"),
 	progress = require("./lib/stream-progress");
@@ -21,7 +20,7 @@ module.exports = function(path) {
 		organizer = createOrganizeStream();
 
 	logIntro();
-	logStart(fileStream, progress(trackStream));
+	logStart(fileStream, trackStream);
 
 	fileStream
 		.pipe(trackStream)
@@ -37,8 +36,10 @@ function logIntro() {
 	);
 }
 
-function logStart(fileStream, progressStream) {
-	var start = Date.now();
+function logStart(fileStream, trackStream) {
+	var start = Date.now(),
+		progressStream = progress(trackStream);
+
 	fileStream.pipe(count(function(length) {
 		console.log(
 			"Reading",
@@ -50,32 +51,6 @@ function logStart(fileStream, progressStream) {
 			console.log("Read complete in " + time + "s", "\n");
 		});
 	}));
-}
-
-var AUDIO_EXTS = [
-	"flac",
-	"aac",
-	"mp3",
-	"m4a",
-	"ogg",
-	"rm",
-	"ra",
-	"wma",
-];
-
-function createFileStream(dirpath) {
-	var stream = es.through();
-	findit(dirpath)
-		.on("file", function(file, stat) {
-			var ext = path.extname(file).slice(1);
-			if (AUDIO_EXTS.indexOf(ext) !== -1) {
-				stream.emit("data", file);
-			}
-		})
-		.on("end", function() {
-			stream.emit("end");
-		});
-	return stream;
 }
 
 function count(fn) {
