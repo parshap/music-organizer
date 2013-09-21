@@ -37,7 +37,8 @@
     "is-integer": "~1",
     "cli-color": "~0.2.3",
     "findit": "~1.1.0",
-    "stream-reduce": "~1.0.0"
+    "stream-reduce": "~1.0.0",
+    "stream-filter": "~1.0.0"
   },
   "devDependencies": {
     "JSONStream": "~0.7.1",

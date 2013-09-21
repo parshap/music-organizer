@@ -3,30 +3,59 @@
 
 var PACKAGE = require("./package.json");
 
-var es = require("event-stream"),
-	color = require("cli-color"),
-	reduce = require("stream-reduce");
-
 var createFileStream = require("./lib/files"),
 	createTrackStream = require("./lib/tracks"),
 	createParseStream = require("./lib/parse"),
-	createOrganizeStream = require("./lib/organize"),
-	progress = require("./lib/stream-progress");
+	createDatabase = require("./lib/database"),
+	createReleaseSelector = require("./lib/release-selector"),
+	createTagStream = require("./lib/tag-picker"),
+	createWriteStream = require("./lib/tag-writer"),
+	createFileRenamer = require("./lib/rename").file,
+	createDirRenamer = require("./lib/rename").dir,
+	createBufferStream = require("./lib/buffer");
 
 module.exports = function(path) {
 	var fileStream = createFileStream(path),
 		trackStream = createTrackStream(),
 		parser = createParseStream(),
-		organizer = createOrganizeStream();
+		db = createDatabase(),
+		releaseSelector = createReleaseSelector(),
+		tagPicker = createTagStream(),
+		writer = createWriteStream(),
+		fileRenamer = createFileRenamer(),
+		dirRenamer = createDirRenamer(),
+		buffer = createBufferStream();
 
 	logIntro();
-	logStart(fileStream, trackStream);
+	logStart({
+		files: fileStream,
+		tracks: trackStream,
+		writer: writer,
+	});
 
 	fileStream
 		.pipe(trackStream)
 		.pipe(parser)
-		.pipe(organizer);
+		.pipe(db)
+		.pipe(releaseSelector)
+		.pipe(tagPicker)
+		.pipe(writer);
+
+	tagPicker.pipe(buffer);
+
+	writer.on("end", function() {
+		buffer.replay(fileRenamer);
+	});
+
+	fileRenamer.on("end", function() {
+		buffer.replay(dirRenamer);
+	});
 };
+
+// -- Logging
+
+var progress = require("./lib/stream-progress"),
+	color = require("cli-color");
 
 function logIntro() {
 	console.log(
@@ -53,8 +82,9 @@ function logStart(fileStream, trackStream) {
 	}));
 }
 
+var reduce = require("stream-reduce");
 function count(fn) {
-	var stream = reduce(function(acc, data) {
+	var stream = reduce(function(acc) {
 		return acc + 1;
 	}, 0);
 	stream.on("data", fn);
