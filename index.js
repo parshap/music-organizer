@@ -26,10 +26,10 @@ module.exports = function(path) {
 		dirRenamer = createDirRenamer(),
 		buffer = createBufferStream();
 
-	logIntro();
-	logStart({
+	logger({
 		files: fileStream,
 		tracks: trackStream,
+		tags: tagPicker,
 		writer: writer,
 	});
 
@@ -54,31 +54,32 @@ module.exports = function(path) {
 
 // -- Logging
 
-var progress = require("./lib/stream-progress"),
-	color = require("cli-color");
+var progress = require("./lib/stream-progress");
 
-function logIntro() {
-	console.log(
-		color.red("album-organizer"),
-		color.redBright("v" + PACKAGE.version),
-		"\n"
-	);
+function logger(streams) {
+	logIntro();
+	logReading(streams);
+	logWriting(streams);
 }
 
-function logStart(fileStream, trackStream) {
-	var start = Date.now(),
-		progressStream = progress(trackStream);
+function logIntro() {
+	console.log("album-organizer", "v" + PACKAGE.version);
+	console.log();
+}
 
-	fileStream.pipe(count(function(length) {
-		console.log(
-			"Reading",
-			color.redBright(length + " files")
-		);
-		progressStream.render();
-		progressStream.on("end", function() {
-			var time = Math.round((Date.now() - start) / 100) / 10;
-			console.log("Read complete in " + time + "s", "\n");
-		});
+function logReading(streams) {
+	var prog = progress(streams.tracks);
+	streams.files.pipe(count(function(length) {
+		console.log("Reading", length, "files");
+		prog.render();
+	}));
+}
+
+function logWriting(streams) {
+	var prog = progress(streams.writer);
+	streams.tags.pipe(count(function(length) {
+		console.log("Writing", length, "files");
+		prog.render();
 	}));
 }
 
