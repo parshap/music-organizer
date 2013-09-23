@@ -1,4 +1,8 @@
 #!/usr/bin/env node
-var organize = require("../");
+
+var organize = require("../"),
+	logger = require("../lib/logger");
+
 var paths = process.argv.slice(2);
-organize(paths[0]);
+var streams = organize(paths[0]);
+logger(streams);
