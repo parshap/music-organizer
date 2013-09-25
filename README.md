@@ -28,3 +28,14 @@ for each file
 	select from available tracks
 	write track info
 	mark tracked as used
+
+# Reduce releases
+
+ * has same data properties
+ * has same tracks
+
+# Reduce tracks
+
+for each file in release
+for each track
+reduce if has same data properties
