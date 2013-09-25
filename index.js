@@ -45,6 +45,7 @@ module.exports = function(path) {
 	// Return some of the streams for logging and introspection
 	return {
 		files: fileStream,
+		release: releaseSelector,
 		tracks: trackStream,
 		tags: tagPicker,
 		writer: writer,
