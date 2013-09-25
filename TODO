@@ -1,5 +1,6 @@
  * Empty announce written tags
  * Copy input files into library "root" directory
  * Check tags to existing tags
+ * Allow genre to be given
  * Readme
  * Tests
