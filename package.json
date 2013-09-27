@@ -27,7 +27,6 @@
     "url": "https://github.com/parshap/album-organizer/issues"
   },
   "dependencies": {
-    "ffmetadata": "~1",
     "acoustid": "~1",
     "event-stream": "~3.0.16",
     "async": "~0.2",
@@ -38,7 +37,8 @@
     "cli-color": "~0.2.3",
     "findit": "~1.1.0",
     "stream-reduce": "~1.0.0",
-    "stream-filter": "~1.0.0"
+    "stream-filter": "~1.0.0",
+    "concat-stream": "~1.0.1"
   },
   "devDependencies": {
     "tape": "~1.1.0"
