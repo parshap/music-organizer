@@ -7,3 +7,8 @@
  * Show actual difference in select choices
  * Most robust solution for e.g., Sway & King Tech - This or That
  * Show extra tags on file
+ * Fix bug with renaming directory with "." in original name
+ * When giving select choices, output all data that is different between any
+   options. (e.g., if given two releases and all track names differ, print all
+   track names of both releases)
+ * Crystal Castles III vs Crystal Castles release directory name
