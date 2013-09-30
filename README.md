@@ -1,3 +1,9 @@
+# Music Organizer
+
+Organizer music files using the [MusicBrainz Music
+Database](http://musicbrainz.org/)
+
+# Notes
 
  * "Crawl" input tracks
  * determine release present

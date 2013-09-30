@@ -1,13 +1,13 @@
 {
-  "name": "album-organizer",
+  "name": "music-organizer",
   "version": "0.0.0",
-  "description": "Organize your album collection from the command line",
+  "description": "Organize music collection",
   "main": "index.js",
   "scripts": {
     "test": "tape test/*.js"
   },
   "bin": {
-    "ao": "./bin/ao"
+    "music-organizer": "./bin/organize"
   },
   "repository": {
     "type": "git",
