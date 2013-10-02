@@ -7,6 +7,7 @@ var createFileStream = require("./lib/files"),
 	createDatabase = require("./lib/database"),
 	createReleaseSelector = require("./lib/release-selector"),
 	createTagStream = require("./lib/tag-picker"),
+	createTagConfirmer = require("./lib/tag-confirmer"),
 	createWriteStream = require("./lib/tag-writer"),
 	createFileRenamer = require("./lib/rename").file,
 	createDirRenamer = require("./lib/rename").dir,
@@ -19,10 +20,8 @@ module.exports = function(path) {
 		db = createDatabase(),
 		releaseSelector = createReleaseSelector(),
 		tagPicker = createTagStream(),
-		writer = createWriteStream(),
-		fileRenamer = createFileRenamer(),
-		dirRenamer = createDirRenamer(),
-		buffer = createBufferStream();
+		tagConfirmer = createTagConfirmer(),
+		writer = createWriteStream();
 
 	fileStream
 		.pipe(trackStream)
@@ -30,16 +29,21 @@ module.exports = function(path) {
 		.pipe(db)
 		.pipe(releaseSelector)
 		.pipe(tagPicker)
+		.pipe(tagConfirmer)
 		.pipe(writer);
 
-	tagPicker.pipe(buffer);
+	var tags = createBufferStream(),
+		fileRenamer = createFileRenamer(),
+		dirRenamer = createDirRenamer();
+
+	tagPicker.pipe(tags);
 
 	writer.on("end", function() {
-		buffer.replay(fileRenamer);
+		tags.replay(fileRenamer);
 	});
 
 	fileRenamer.on("end", function() {
-		buffer.replay(dirRenamer);
+		tags.replay(dirRenamer);
 	});
 
 	// Return some of the streams for logging and introspection
