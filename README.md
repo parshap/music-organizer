@@ -3,6 +3,16 @@
 Organizer music files using the [MusicBrainz Music
 Database](http://musicbrainz.org/)
 
+## Installation
+
+```
+npm install music-organizer
+```
+ * taglib (`brew install taglib`)
+ * python + pip (`brew install python`)
+ * `pip install cython`
+ * `pip install pytaglib`
+
 # Notes
 
  * "Crawl" input tracks
