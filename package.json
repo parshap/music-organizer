@@ -35,7 +35,7 @@
     "sanitize-filename": "~1",
     "is-integer": "~1",
     "findit": "~1.1.0",
-    "stream-reduce": "~1.0.0",
+    "stream-reduce": "~1.0.1",
     "stream-filter": "~1.0.0",
     "concat-stream": "~1.0.1"
   },
